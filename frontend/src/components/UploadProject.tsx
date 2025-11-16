@@ -58,6 +58,8 @@ const UploadProject: React.FC<UploadProjectProps> = ({ isOpen, onClose, programa
   const [searchDB, setSearchDB] = useState('');
   const [showNoDatabaseModal, setShowNoDatabaseModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -945,19 +947,29 @@ const UploadProject: React.FC<UploadProjectProps> = ({ isOpen, onClose, programa
     
     // Validar campos requeridos
     if (!formData.tipoEstancia) {
-      alert('Debes seleccionar el tipo de proyecto');
+      setErrorMessage('Debes seleccionar el tipo de proyecto');
+      setShowErrorModal(true);
       return;
     }
     
     // Validar que se haya seleccionado un profesor asesor
     if (!formData.professor_id) {
-      alert('Debes seleccionar un profesor asesor');
+      setErrorMessage('Debes seleccionar un profesor asesor');
+      setShowErrorModal(true);
       return;
     }
     
     // Validar que se haya seleccionado al menos una tecnología
     if (formData.tecnologias.length === 0) {
-      alert('Debes seleccionar al menos una tecnología');
+      setErrorMessage('Debes seleccionar al menos una tecnología');
+      setShowErrorModal(true);
+      return;
+    }
+    
+    // Validar que se haya subido un archivo PDF (obligatorio)
+    if (!isEditMode && !formData.archivo) {
+      setErrorMessage('Debes subir un archivo PDF de tu proyecto');
+      setShowErrorModal(true);
       return;
     }
     
@@ -1533,6 +1545,24 @@ const UploadProject: React.FC<UploadProjectProps> = ({ isOpen, onClose, programa
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Archivo PDF {isEditMode && <span className="text-gray-500 font-normal text-xs">(opcional - solo si deseas cambiar el archivo actual)</span>}
             </label>
+            
+            {/* Aviso para archivos de Drive - Solo móviles */}
+            <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg md:hidden">
+              <div className="flex items-start space-x-2">
+                <svg className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-yellow-800">
+                     ¿Tu archivo está en Google Drive?
+                  </p>
+                  <p className="text-xs text-yellow-700 mt-1">
+                    No podemos recibir archivos directamente desde Drive. Por favor, <strong>descarga primero el PDF a tu dispositivo</strong> y luego selecciónalo desde "Descargas".
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                 isDragging
@@ -1669,14 +1699,14 @@ const UploadProject: React.FC<UploadProjectProps> = ({ isOpen, onClose, programa
       {showNoDatabaseModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-t-2xl">
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-t-2xl">
               <div className="flex items-center space-x-3">
                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <h3 className="text-xl font-bold">Base de Datos</h3>
               </div>
-              <p className="mt-2 text-blue-100">
+              <p className="mt-2 text-orange-100">
                 No seleccionaste ninguna base de datos
               </p>
             </div>
@@ -1721,6 +1751,34 @@ const UploadProject: React.FC<UploadProjectProps> = ({ isOpen, onClose, programa
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Error */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fadeIn">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-500 to-red-600 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center space-x-3">
+                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <h3 className="text-xl font-bold">Tienes que subir tu PDF</h3>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <p className="text-gray-700 mb-6">{errorMessage}</p>
+
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all font-medium"
+              >
+                Entendido
+              </button>
             </div>
           </div>
         </div>
