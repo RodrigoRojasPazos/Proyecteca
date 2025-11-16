@@ -95,9 +95,18 @@ const UploadProject: React.FC<UploadProjectProps> = ({ isOpen, onClose, programa
       loadProfessors();
       // Pequeño delay para mostrar la animación
       setTimeout(() => setIsVisible(true), 50);
+      // Bloquear scroll del body
+      document.body.style.overflow = 'hidden';
     } else {
       setIsVisible(false);
+      // Restaurar scroll del body
+      document.body.style.overflow = 'unset';
     }
+    
+    // Cleanup: asegurar que se restaure el scroll al desmontar
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen]);
 
   // Pre-poblar datos cuando estamos en modo edición

@@ -33,9 +33,16 @@ api.interceptors.response.use(
 
 // Servicios de proyectos
 export const projectsAPI = {
-  // Obtener todos los proyectos
-  getAll: async () => {
-    const response = await api.get('/projects');
+  // Obtener todos los proyectos con paginación
+  getAll: async (params?: { 
+    page?: number; 
+    limit?: number; 
+    search?: string; 
+    filter?: string;
+    technologies?: string[];
+    databases?: string[];
+  }) => {
+    const response = await api.get('/projects', { params });
     return response.data;
   },
 

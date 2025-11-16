@@ -15,6 +15,8 @@ const Layout: React.FC<{ children: React.ReactNode; title: string }> = ({ childr
   const location = useLocation();
   const [isVisible, setIsVisible] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isProfileMenuClosing, setIsProfileMenuClosing] = useState(false);
 
   // Animación más suave cuando cambia la ruta
   useEffect(() => {
@@ -28,9 +30,17 @@ const Layout: React.FC<{ children: React.ReactNode; title: string }> = ({ childr
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
+  const handleCloseProfileMenu = () => {
+    setIsProfileMenuClosing(true);
+    setTimeout(() => {
+      setIsProfileMenuOpen(false);
+      setIsProfileMenuClosing(false);
+    }, 150);
+  };
+
   const navItems: NavItem[] = [
   // { path: '/dashboard', label: 'Dashboard' },
-    { path: '/inicio', label: 'Mis Proyectos', allowedRoles: ['alumno', 'profesor', 'asesor'] },
+    { path: '/inicio', label: 'Mis Proyectos', allowedRoles: ['alumno'] },
     { path: '/proyectos', label: 'Proyectos UPQROO' },
     { path: '/revisiones', label: 'Revisiones', allowedRoles: ['profesor', 'director', 'asesor'] },
     { path: '/admin', label: 'Administración', requiresRole: 'director' }
@@ -96,17 +106,52 @@ const Layout: React.FC<{ children: React.ReactNode; title: string }> = ({ childr
                   className="h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-full border-2 border-white cursor-pointer hover:border-orange-200 transition-colors" 
                   src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nombre || 'Usuario')}&background=ffffff&color=f97316&size=48`} 
                   alt={user?.nombre || 'Usuario'}
-                  title="Click para cerrar sesión"
-                  onClick={logout}
+                  title="Menú de usuario"
+                  onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                 />
-                {/* Tooltip */}
-                <div className="hidden md:block absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                  <div className="p-3">
-                    <div className="font-semibold text-gray-900">{user?.nombre || 'Usuario'}</div>
-                    <div className="text-sm text-gray-600">{user?.email || 'usuario@upg.edu.mx'}</div>
-                    <div className="text-xs text-gray-500 mt-1">Click en la imagen para cerrar sesión</div>
-                  </div>
-                </div>
+                
+                {/* Menú desplegable con animación */}
+                {isProfileMenuOpen && (
+                  <>
+                    {/* Overlay para cerrar al hacer click fuera */}
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={handleCloseProfileMenu}
+                    />
+                    
+                    {/* Menú */}
+                    <div className={`absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg z-20 overflow-hidden transition-all duration-150 ease-out ${
+                      isProfileMenuClosing 
+                        ? 'opacity-0 -translate-y-2' 
+                        : 'opacity-100 translate-y-0 animate-[slideDown_0.15s_ease-out]'
+                    }`}>
+                      <style>{`
+                        @keyframes slideDown {
+                          from {
+                            opacity: 0;
+                            transform: translateY(-8px);
+                          }
+                          to {
+                            opacity: 1;
+                            transform: translateY(0);
+                          }
+                        }
+                      `}</style>
+                      <button
+                        onClick={() => {
+                          handleCloseProfileMenu();
+                          setTimeout(() => logout(), 150);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-100 text-gray-700 font-medium transition-colors flex items-center space-x-2"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Cerrar sesión</span>
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
               {/* Botón menú móvil */}
               <button

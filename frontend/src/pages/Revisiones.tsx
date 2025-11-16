@@ -39,6 +39,7 @@ interface Project {
 const Revisiones: React.FC = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]); // Todos los proyectos para conteo global
   const [filtroEstado, setFiltroEstado] = useState<string>('todos');
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState<Project | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -50,6 +51,12 @@ const Revisiones: React.FC = () => {
   const [isRejectFromDetails, setIsRejectFromDetails] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [comentarioAlumno, setComentarioAlumno] = useState('');
+  
+  // Estados de paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProjects, setTotalProjects] = useState(0);
+  const projectsPerPage = 12;
 
   // Funciones para manejar animaciones suaves de modales
   const openProjectModal = async (project: Project) => {
@@ -198,80 +205,79 @@ const Revisiones: React.FC = () => {
       setError('');
       console.log('Loading projects from API...');
       
-      const response = await projectsAPI.getAll();
-      console.log('API Response:', response);
+      // Primero, cargar TODOS los proyectos sin límite para el conteo global
+      const allProjectsResponse = await projectsAPI.getAll({ limit: 999999 }); // Sin límite real
+      const allProjectsData = allProjectsResponse.projects || allProjectsResponse.data || allProjectsResponse;
       
-      // La respuesta de la API debería tener la estructura { projects: [...], total: number }
-      const projectsData = response.projects || response.data || response;
-      
-      // Procesar y normalizar los datos del proyecto
-      const projectsWithStatus = projectsData.map((project: any) => {
+      // Procesar todos los proyectos
+      const allProjectsWithStatus = allProjectsData.map((project: any) => {
         return {
           ...project,
           estado: project.estado || 'pendiente',
-          // Asegurar que los campos críticos tengan valores por defecto
           titulo: project.titulo || 'Sin título',
           descripcion: project.descripcion || 'Sin descripción',
           autor: project.autor || project.alumnos?.[0]?.nombre || 'Sin autor',
           asesor: project.asesor || project.profesor?.nombre || 'Sin asesor',
           programa: project.programa || 'Sin especificar',
-        asignatura: project.asignatura || 'Sin especificar',
-        tipo: project.tipo || 'Sin especificar',
-        fechaDefensa: project.fechaDefensa || project.fecha_defensa || 'Sin fecha',
-        url_repositorio: project.url_repositorio || project.repositorio_url || '#',
-        tecnologias: Array.isArray(project.tecnologias) ? project.tecnologias : 
-                    typeof project.tecnologias === 'string' ? project.tecnologias.split(',').map((t: string) => t.trim()) : [],
-        baseDatos: Array.isArray(project.baseDatos) ? project.baseDatos : 
-                  typeof project.baseDatos === 'string' ? project.baseDatos.split(',').map((db: string) => db.trim()) : [],
-        // Asegurar que alumnos_data esté disponible
-        alumnos_data: project.alumnos_data || project.alumnos || null,
-        archivo: project.archivo || null,
-        // Asegurar que profesor tenga la estructura correcta
-        profesor: project.profesor || (project.alumnos?.[0] ? {
-          id_usuario: 0,
-          nombre: project.asesor || 'Sin asesor',
-          correo: '',
-          rol: 'profesor',
-          matricula: '',
-          creado_en: ''
-        } : null)
+          asignatura: project.asignatura || 'Sin especificar',
+          tipo: project.tipo || 'Sin especificar',
+          fechaDefensa: project.fechaDefensa || project.fecha_defensa || 'Sin fecha',
+          url_repositorio: project.url_repositorio || project.repositorio_url || '#',
+          tecnologias: Array.isArray(project.tecnologias) ? project.tecnologias : 
+                      typeof project.tecnologias === 'string' ? project.tecnologias.split(',').map((t: string) => t.trim()) : [],
+          baseDatos: Array.isArray(project.baseDatos) ? project.baseDatos : 
+                    typeof project.baseDatos === 'string' ? project.baseDatos.split(',').map((db: string) => db.trim()) : [],
+          alumnos_data: project.alumnos_data || project.alumnos || null,
+          archivo: project.archivo || null,
+          profesor: project.profesor || (project.alumnos?.[0] ? {
+            id_usuario: 0,
+            nombre: project.asesor || 'Sin asesor',
+            correo: '',
+            rol: 'profesor',
+            matricula: '',
+            creado_en: ''
+          } : null)
         };
       });
       
-      // Filtrar proyectos según el rol del usuario
-      let filteredProjects = projectsWithStatus;
+      // Filtrar todos los proyectos según el rol del usuario
+      let allFilteredProjects = allProjectsWithStatus;
       if (user && (user.rol === 'profesor' || user.rol === 'asesor')) {
-        // Los profesores y asesores solo ven proyectos donde son asesores
-        console.log(`Filtering projects for ${user.rol} ${user.nombre} (ID: ${user.id_usuario})`);
-        console.log('Available projects to filter:', projectsWithStatus.map((p: any) => ({
-          id: p.id_proyecto,
-          titulo: p.titulo,
-          profesor_id: p.profesor_id,
-          profesor: p.profesor,
-          asesor: p.asesor
-        })));
-        
-        filteredProjects = projectsWithStatus.filter((project: any) => {
+        allFilteredProjects = allProjectsWithStatus.filter((project: any) => {
           const isAsesor = project.profesor_id === user.id_usuario || 
                          project.profesor?.id_usuario === user.id_usuario ||
                          (project.asesor && project.asesor.toLowerCase().includes(user.nombre.toLowerCase()));
-          
-          if (isAsesor) {
-            console.log(`✅ Project "${project.titulo}" matches ${user.rol} ${user.nombre}`);
-          }
-          
           return isAsesor;
         });
-        console.log(`Filtered ${filteredProjects.length} projects for ${user.rol} ${user.nombre} (ID: ${user.id_usuario})`);
-      } else if (user && user.rol === 'director') {
-        // Los directores pueden ver todos los proyectos
-        console.log(`Director ${user.nombre} can see all ${filteredProjects.length} projects`);
       }
       
-      setProjects(filteredProjects);
-      console.log('Projects loaded from database:', filteredProjects);
+      // Guardar todos los proyectos filtrados para conteo global
+      setAllProjects(allFilteredProjects);
       
-      if (filteredProjects.length === 0) {
+      // Filtrar proyectos del lado del cliente según el filtro de estado seleccionado
+      let projectsToShow = allFilteredProjects;
+      if (filtroEstado !== 'todos') {
+        projectsToShow = allFilteredProjects.filter((project: any) => project.estado === filtroEstado);
+      }
+      
+      // Aplicar paginación del lado del cliente
+      const totalFilteredProjects = projectsToShow.length;
+      const startIndex = (currentPage - 1) * projectsPerPage;
+      const endIndex = startIndex + projectsPerPage;
+      const paginatedProjects = projectsToShow.slice(startIndex, endIndex);
+      
+      setProjects(paginatedProjects);
+      setTotalPages(Math.ceil(totalFilteredProjects / projectsPerPage));
+      setTotalProjects(totalFilteredProjects);
+      
+      console.log('Projects loaded:', {
+        total: allFilteredProjects.length,
+        filtered: totalFilteredProjects,
+        currentPage: currentPage,
+        showing: paginatedProjects.length
+      });
+      
+      if (paginatedProjects.length === 0) {
         if (user?.rol === 'profesor') {
           setError('No tienes proyectos asignados como asesor.');
         } else {
@@ -302,7 +308,12 @@ const Revisiones: React.FC = () => {
 
   useEffect(() => {
     loadProjects();
-  }, [user]);
+  }, [user, currentPage, filtroEstado]); // Agregar filtroEstado como dependencia
+  
+  // Resetear a la primera página cuando cambia el filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filtroEstado]);
 
   // Bloquear scroll del body cuando el modal de detalles está abierto
   useEffect(() => {
@@ -389,13 +400,9 @@ const Revisiones: React.FC = () => {
     }
   };
 
-  const proyectosFiltrados = projects.filter(project => {
-    if (filtroEstado === 'todos') return true;
-    return project.estado === filtroEstado;
-  });
-
   const contarPorEstado = (estado: string) => {
-    return projects.filter(project => project.estado === estado).length;
+    // Usar allProjects en lugar de projects para contar globalmente
+    return allProjects.filter(project => project.estado === estado).length;
   };
 
   return (
@@ -620,12 +627,12 @@ const Revisiones: React.FC = () => {
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900">
                   {filtroEstado === 'todos' ? 'Todos los Proyectos' : `Proyectos ${getEstadoLabel(filtroEstado)}`}
-                  <span className="ml-2 text-sm text-gray-500">({proyectosFiltrados.length})</span>
+                  <span className="ml-2 text-sm text-gray-500">({totalProjects})</span>
                 </h3>
               </div>
               <div className="divide-y divide-gray-200">
-                {proyectosFiltrados.length > 0 ? (
-                  proyectosFiltrados.map((project) => (
+                {projects.length > 0 ? (
+                  projects.map((project) => (
                     <div 
                       key={project.id_proyecto} 
                       className="px-6 py-4 hover:bg-gray-50 cursor-pointer"
@@ -788,6 +795,88 @@ const Revisiones: React.FC = () => {
                 )}
               </div>
             </div>
+            
+            {/* Controles de Paginación */}
+            {totalPages > 1 && (
+              <div className="mt-6 border-t border-gray-200 pt-6">
+                <div className="flex flex-col items-center gap-4">
+                  {/* Información de paginación */}
+                  <div className="text-sm text-gray-600">
+                    Mostrando <span className="font-medium">{((currentPage - 1) * projectsPerPage) + 1}</span> - <span className="font-medium">{Math.min(currentPage * projectsPerPage, totalProjects)}</span> de <span className="font-medium">{totalProjects}</span> proyectos
+                  </div>
+                  
+                  {/* Navegación de páginas */}
+                  <nav className="flex items-center gap-2">
+                    {/* Botón Anterior */}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === 1
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-orange-500 text-white border border-orange-600 hover:bg-orange-600 shadow-sm'
+                      }`}
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Anterior
+                    </button>
+
+                    {/* Números de Página */}
+                    <div className="hidden sm:flex items-center gap-1">
+                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              currentPage === pageNum
+                                ? 'bg-orange-500 text-white shadow-md hover:bg-orange-600'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-orange-50'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Indicador de página en móvil */}
+                    <div className="sm:hidden px-4 py-2 bg-orange-100 rounded-lg text-sm font-medium text-orange-800">
+                      Página {currentPage} de {totalPages}
+                    </div>
+
+                    {/* Botón Siguiente */}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === totalPages
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-orange-500 text-white border border-orange-600 hover:bg-orange-600 shadow-sm'
+                      }`}
+                    >
+                      Siguiente
+                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            )}
 
           </div>
         </div>
@@ -1219,7 +1308,6 @@ const Revisiones: React.FC = () => {
                             estatus: 'en_revision'
                           });
                           
-                          alert('Comentario enviado exitosamente al alumno. El proyecto ha pasado a estado "En Revisión".');
                           setComentarioAlumno('');
                           
                           // Actualizar el proyecto seleccionado para reflejar el nuevo estado
@@ -1230,6 +1318,9 @@ const Revisiones: React.FC = () => {
                           
                           // Recargar proyectos
                           await reloadProjects();
+                          
+                          // Cerrar el modal después de enviar
+                          closeProjectModal();
                         } catch (error) {
                           console.error('Error enviando comentario:', error);
                           alert('Error al enviar el comentario. Por favor, inténtalo de nuevo.');

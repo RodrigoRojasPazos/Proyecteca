@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Project } from '../types';
-import { Edit, Trash2, Calendar, User, BookOpen, Tag, FileText, X, RefreshCw } from 'lucide-react';
+import { Edit, Trash2, Calendar, User, BookOpen, Tag, FileText, X, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FaGithub } from 'react-icons/fa';
 import Layout from '../components/Layout';
 import { projectsAPI } from '../services/api';
@@ -11,6 +11,12 @@ const Projects: React.FC = () => {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Estados de paginación del servidor
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProjects, setTotalProjects] = useState(0);
+  const projectsPerPage = 12;
   
   // Función para determinar si el usuario puede eliminar un proyecto
   const canDeleteProject = (project: Project): boolean => {
@@ -100,11 +106,13 @@ const Projects: React.FC = () => {
 
   const [error, setError] = useState<string>('');
   const [filter, setFilter] = useState<'all' | 'borrador' | 'en_revision' | 'aprobado' | 'rechazado'>('all');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(''); // Valor que se muestra en el input
+  const [searchQuery, setSearchQuery] = useState(''); // Valor que se usa en la petición (con debounce)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteCountdown, setDeleteCountdown] = useState(5);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = useState<{ [key: number]: string }>({});
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -144,12 +152,41 @@ const Projects: React.FC = () => {
     const fetchProjects = async () => {
       try {
         setError('');
+        setLoading(true);
         
-        // Cargar todos los proyectos desde la API
-        const response = await projectsAPI.getAll();
+        // Construir parámetros de búsqueda y filtro para enviar al servidor
+        const params: any = {
+          page: currentPage,
+          limit: projectsPerPage
+        };
+        
+        // Agregar búsqueda si existe
+        if (searchQuery.trim()) {
+          params.search = searchQuery.trim();
+        }
+        
+        // Agregar filtro de estado si no es 'all'
+        if (filter !== 'all') {
+          params.filter = filter;
+        }
+        
+        // Agregar filtros de tecnologías si existen
+        // Enviar como JSON string para que el backend lo pueda parsear correctamente
+        if (techFilter.length > 0) {
+          params.technologies = JSON.stringify(techFilter);
+        }
+        
+        // Agregar filtros de bases de datos si existen
+        // Enviar como JSON string para que el backend lo pueda parsear correctamente
+        if (dbFilter.length > 0) {
+          params.databases = JSON.stringify(dbFilter);
+        }
+        
+        // Cargar proyectos desde la API con paginación del servidor
+        const response = await projectsAPI.getAll(params);
         console.log('Respuesta de la API:', response);
         
-        // La API puede devolver directamente un array o un objeto con datos
+        // La API devuelve un objeto con projects/data y pagination
         let projectsData = [];
         if (Array.isArray(response)) {
           projectsData = response;
@@ -160,7 +197,18 @@ const Projects: React.FC = () => {
         }
         
         setProjects(projectsData);
-        console.log(`${projectsData.length} proyectos cargados desde la base de datos`);
+        
+        // Actualizar información de paginación del servidor
+        if (response.pagination) {
+          setTotalPages(response.pagination.totalPages || 1);
+          setTotalProjects(response.pagination.total || projectsData.length);
+        } else {
+          // Fallback si no viene paginación
+          setTotalPages(1);
+          setTotalProjects(projectsData.length);
+        }
+        
+        console.log(`${projectsData.length} proyectos cargados (página ${currentPage} de ${response.pagination?.totalPages || 1})`);
         
         // Cargar previsualizaciones de PDFs para proyectos que tienen archivo
         const previews: { [key: number]: string } = {};
@@ -178,6 +226,8 @@ const Projects: React.FC = () => {
         console.error('Error al cargar proyectos desde API:', error);
         setError('Error al cargar proyectos desde el servidor.');
         setProjects([]);
+        setTotalPages(1);
+        setTotalProjects(0);
       } finally {
         setLoading(false);
       }
@@ -193,7 +243,15 @@ const Projects: React.FC = () => {
         }
       });
     };
-  }, []);
+  }, [currentPage, searchQuery, filter, techFilter, dbFilter]); // Recargar cuando cambien estos valores
+
+  // Función para manejar la búsqueda cuando se presiona Enter
+  const handleSearchSubmit = (e?: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e && e.key !== 'Enter') return;
+    e?.preventDefault();
+    setSearchQuery(search);
+    setCurrentPage(1); // Resetear a la primera página cuando se busca
+  };
 
   // Bloquear scroll del body cuando el modal está abierto
   useEffect(() => {
@@ -266,13 +324,53 @@ const Projects: React.FC = () => {
 
   const handleDeleteProject = (project: Project) => {
     setSelectedProject(project);
+    setDeleteCountdown(5);
     setShowDeleteModal(true);
   };
+
+  // Efecto para el countdown del botón eliminar
+  useEffect(() => {
+    if (showDeleteModal && deleteCountdown > 0) {
+      const timer = setTimeout(() => {
+        setDeleteCountdown(deleteCountdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [showDeleteModal, deleteCountdown]);
 
   const reloadProjects = async () => {
     try {
       setLoading(true);
-      const response = await projectsAPI.getAll();
+      
+      // Construir parámetros de búsqueda y filtro para enviar al servidor
+      const params: any = {
+        page: currentPage,
+        limit: projectsPerPage
+      };
+      
+      // Agregar búsqueda si existe
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+      
+      // Agregar filtro de estado si no es 'all'
+      if (filter !== 'all') {
+        params.filter = filter;
+      }
+      
+      // Agregar filtros de tecnologías si existen
+      // Enviar como JSON string para que el backend lo pueda parsear correctamente
+      if (techFilter.length > 0) {
+        params.technologies = JSON.stringify(techFilter);
+      }
+      
+      // Agregar filtros de bases de datos si existen
+      // Enviar como JSON string para que el backend lo pueda parsear correctamente
+      if (dbFilter.length > 0) {
+        params.databases = JSON.stringify(dbFilter);
+      }
+      
+      const response = await projectsAPI.getAll(params);
       
       let projectsData = [];
       if (Array.isArray(response)) {
@@ -284,7 +382,17 @@ const Projects: React.FC = () => {
       }
       
       setProjects(projectsData);
-      console.log(`${projectsData.length} proyectos recargados desde la base de datos`);
+      
+      // Actualizar información de paginación del servidor
+      if (response.pagination) {
+        setTotalPages(response.pagination.totalPages || 1);
+        setTotalProjects(response.pagination.total || projectsData.length);
+      } else {
+        setTotalPages(1);
+        setTotalProjects(projectsData.length);
+      }
+      
+      console.log(`${projectsData.length} proyectos recargados (página ${currentPage} de ${response.pagination?.totalPages || 1})`);
     } catch (error) {
       console.error('Error al recargar proyectos:', error);
     } finally {
@@ -303,7 +411,6 @@ const Projects: React.FC = () => {
       
       setShowDeleteModal(false);
       setSelectedProject(null);
-      alert('Proyecto eliminado exitosamente');
     } catch (error: any) {
       console.error('Error al eliminar proyecto:', error);
       
@@ -350,35 +457,98 @@ const Projects: React.FC = () => {
     setDbFilter(dbFilter.filter(d => d !== db));
   };
 
-  const filteredProjects = projects.filter(project => {
-    const matchesFilter = filter === 'all' || project.estatus === filter || project.estado === filter;
-    const matchesSearch = project.titulo.toLowerCase().includes(search.toLowerCase()) ||
-                         project.descripcion?.toLowerCase().includes(search.toLowerCase()) ||
-                         project.asignatura?.toLowerCase().includes(search.toLowerCase());
+  // Los proyectos ya vienen filtrados del servidor, no necesitamos filtrar localmente
+  const currentProjects = projects;
+  
+  // Asegurar que currentPage esté en un rango válido
+  const validCurrentPage = totalPages > 0 
+    ? Math.min(Math.max(1, currentPage), totalPages)
+    : 1;
+  
+  // Calcular índices para mostrar información de paginación
+  const indexOfFirstProject = (validCurrentPage - 1) * projectsPerPage + 1;
+  const indexOfLastProject = Math.min(validCurrentPage * projectsPerPage, totalProjects);
+
+  // Resetear a la primera página cuando cambian los filtros (que se envían al servidor)
+  // Nota: searchQuery ya resetea la página en handleSearchSubmit
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, techFilter, dbFilter]);
+
+  // Asegurar que currentPage esté en rango válido cuando cambia totalPages
+  useEffect(() => {
+    if (totalPages === 0 || totalPages === 1) {
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+      }
+    } else if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    } else if (currentPage < 1) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
+
+  // Funciones de navegación de páginas
+  const goToPage = (pageNumber: number) => {
+    const validPage = Math.max(1, Math.min(pageNumber, totalPages));
+    if (validPage !== currentPage) {
+      setCurrentPage(validPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (validCurrentPage > 1) {
+      goToPage(validCurrentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (validCurrentPage < totalPages) {
+      goToPage(validCurrentPage + 1);
+    }
+  };
+
+  // Generar números de página para mostrar
+  const getPageNumbers = (): (number | string)[] => {
+    const pages: (number | string)[] = [];
+    const maxPagesToShow = 5;
     
-    // Filtro de tecnologías - TODAS las tecnologías deben estar presentes (AND)
-    const matchesTech = techFilter.length === 0 || 
-      techFilter.every(tech => 
-        project.tecnologias?.some(projectTech => 
-          projectTech.toLowerCase().includes(tech.toLowerCase())
-        )
-      );
+    // Si no hay páginas, retornar array vacío
+    if (totalPages === 0 || totalPages === 1) {
+      return pages;
+    }
     
-    // Filtro de base de datos - TODAS las bases de datos deben estar presentes (AND)
-    const matchesDb = dbFilter.length === 0 || 
-      dbFilter.every(db => {
-        if (typeof project.baseDatos === 'string') {
-          return project.baseDatos.toLowerCase().includes(db.toLowerCase());
-        } else if (Array.isArray(project.baseDatos)) {
-          return project.baseDatos.some(projectDb => 
-            projectDb.toLowerCase().includes(db.toLowerCase())
-          );
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (validCurrentPage <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
         }
-        return false;
-      });
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (validCurrentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = validCurrentPage - 1; i <= validCurrentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
     
-    return matchesFilter && matchesSearch && matchesTech && matchesDb;
-  });
+    return pages;
+  };
 
   const getStatusBadgeColor = (estatus: string) => {
     switch (estatus) {
@@ -481,7 +651,7 @@ const Projects: React.FC = () => {
           <div className="px-4 py-5 sm:p-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Proyectos</h1>
             <p className="text-gray-600 mb-6">
-              Revisa todos los proyectos académicos. Total: {projects.length} proyectos
+              Revisa todos los proyectos académicos. Total: {totalProjects} proyectos {totalProjects > currentProjects.length && `(mostrando ${currentProjects.length} en esta página)`}
             </p>
 
             {/* Indicador de error */}
@@ -505,9 +675,10 @@ const Projects: React.FC = () => {
                   <input
                     type="text"
                     id="search"
-                    placeholder="Buscar por título, descripción o asignatura..."
+                    placeholder="Buscar por título, descripción o asignatura... (Presiona Enter para buscar)"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={handleSearchSubmit}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -609,155 +780,237 @@ const Projects: React.FC = () => {
             </div>
 
             {/* Lista de proyectos */}
-            {filteredProjects.length === 0 ? (
+            {currentProjects.length === 0 ? (
               <div className="text-center py-12">
                 <FileText className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No hay proyectos</h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  {projects.length === 0 
+                  {totalProjects === 0 
                     ? "Aún no tienes proyectos registrados."
                     : "No se encontraron proyectos con los filtros aplicados."
                   }
                 </p>
               </div>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {filteredProjects.map((project) => (
-                  <div key={project.id_proyecto} className="bg-white border border-gray-200 rounded-lg shadow hover:shadow-xl transition-all duration-300 ease-in-out hover:scale-105 overflow-hidden">
-                    {/* Previsualización del documento */}
-                    {project.archivo && previewUrls[project.id_proyecto] ? (
-                      <div className="relative w-full h-48 bg-gray-100 border-b border-gray-200 cursor-pointer pdf-preview-wrapper"
-                        onClick={() => handleViewProject(project)}
-                      >
-                        {/* Contenedor del PDF con márgenes negativos para ocultar scrollbars */}
-                        <div className="pdf-preview-container pdf-preview-wrapper transition-transform duration-300 group-hover:scale-105">
-                          <iframe
-                            src={`${previewUrls[project.id_proyecto]}#toolbar=0&navpanes=0&scrollbar=0&view=FitH&page=1&zoom=page-width`}
-                            className="pdf-preview-iframe"
-                            title={`Vista previa de ${project.titulo}`}
-                          />
+              <>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+                  {currentProjects.map((project) => (
+                    <div key={project.id_proyecto} className="bg-white border border-gray-200 rounded-lg shadow hover:shadow-xl transition-all duration-300 ease-in-out hover:scale-105 overflow-hidden">
+                      {/* Previsualización del documento */}
+                      {project.archivo && previewUrls[project.id_proyecto] ? (
+                        <div className="relative w-full h-48 bg-gray-100 border-b border-gray-200 cursor-pointer pdf-preview-wrapper"
+                          onClick={() => handleViewProject(project)}
+                        >
+                          {/* Contenedor del PDF con márgenes negativos para ocultar scrollbars */}
+                          <div className="pdf-preview-container pdf-preview-wrapper transition-transform duration-300 group-hover:scale-105">
+                            <iframe
+                              src={`${previewUrls[project.id_proyecto]}#toolbar=0&navpanes=0&scrollbar=0&view=FitH&page=1&zoom=page-width`}
+                              className="pdf-preview-iframe"
+                              title={`Vista previa de ${project.titulo}`}
+                            />
+                          </div>
+                          {/* Overlay sutil con gradiente */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                         </div>
-                        {/* Overlay sutil con gradiente */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                      </div>
-                    ) : project.archivo ? (
-                      <div className="relative w-full h-48 bg-gray-100 border-b border-gray-200 overflow-hidden flex items-center justify-center cursor-pointer"
-                        onClick={() => handleViewProject(project)}
-                      >
-                        <div className="text-center text-gray-500">
-                          <FileText className="w-12 h-12 mx-auto mb-2" />
-                          <p className="text-sm">Cargando previsualización...</p>
-                        </div>
-                      </div>
-                    ) : null}
-                    
-                    <div 
-                      className="p-6 cursor-pointer" 
-                      onClick={() => handleViewProject(project)}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">{project.titulo}</h3>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(project.estatus)}`}>
-                          {getStatusText(project.estatus, project.estado)}
-                        </span>
-                      </div>
-                      
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-3">{project.descripcion}</p>
-                      
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center text-sm text-gray-500">
-                          <BookOpen className="w-4 h-4 mr-2" />
-                          <span>{project.asignatura}</span>
-                        </div>
-                        
-                        {/* Tecnologías del proyecto */}
-                        <div className="flex items-start text-sm text-gray-500">
-                          <Tag className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-                          <div className="flex flex-wrap gap-1">
-                            {project.tecnologias && project.tecnologias.length > 0 ? (
-                              <>
-                                {project.tecnologias.slice(0, 2).map((tech, index) => (
-                                  <span key={index} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                    {tech}
-                                  </span>
-                                ))}
-                                {project.tecnologias.length > 2 && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                                    +{project.tecnologias.length - 2}
-                                  </span>
-                                )}
-                              </>
-                            ) : (
-                              <span className="text-gray-400 text-xs italic">Sin tecnologías</span>
-                            )}
+                      ) : project.archivo ? (
+                        <div className="relative w-full h-48 bg-gray-100 border-b border-gray-200 overflow-hidden flex items-center justify-center cursor-pointer"
+                          onClick={() => handleViewProject(project)}
+                        >
+                          <div className="text-center text-gray-500">
+                            <FileText className="w-12 h-12 mx-auto mb-2" />
+                            <p className="text-sm">Cargando previsualización...</p>
                           </div>
                         </div>
-                        
-                        {/* Nombre del propietario/autor del proyecto */}
-                        <div className="flex items-center text-sm text-gray-500">
-                          <User className="w-4 h-4 mr-2" />
-                          <span className="font-medium text-gray-700">
-                            {project.autor || 
-                             (project.alumnos && project.alumnos.length > 0 
-                               ? project.alumnos[0].nombre 
-                               : project.profesor?.nombre || 'Sin propietario')}
+                      ) : null}
+                      
+                      <div 
+                        className="p-6 cursor-pointer" 
+                        onClick={() => handleViewProject(project)}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">{project.titulo}</h3>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(project.estatus)}`}>
+                            {getStatusText(project.estatus, project.estado)}
                           </span>
                         </div>
                         
-                        {/* Fecha de publicación del proyecto */}
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Calendar className="w-4 h-4 mr-2" />
-                          <span>
-                            {project.fechaDefensa 
-                              ? project.fechaDefensa
-                              : new Date(project.creado_en).toLocaleDateString()}
-                          </span>
-                        </div>
+                        <p className="text-gray-600 text-sm mb-4 line-clamp-3">{project.descripcion}</p>
                         
-                        {project.url_repositorio && (
+                        <div className="space-y-2 mb-4">
                           <div className="flex items-center text-sm text-gray-500">
-                            <FaGithub className="w-4 h-4 mr-2" />
-                            <a 
-                              href={project.url_repositorio} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 truncate"
-                            >
-                              Repositorio
-                            </a>
+                            <BookOpen className="w-4 h-4 mr-2" />
+                            <span>{project.asignatura}</span>
                           </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
-                        {canEditProject(project) && (
-                          <button 
-                            onClick={() => handleEditProject(project)}
-                            className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                          >
-                            <Edit className="w-4 h-4 mr-1" />
-                            Editar
-                          </button>
-                        )}
-                        {canDeleteProject(project) && (
-                          <button 
-                            onClick={() => handleDeleteProject(project)}
-                            className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                          
+                          {/* Tecnologías del proyecto */}
+                          <div className="flex items-start text-sm text-gray-500">
+                            <Tag className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                            <div className="flex flex-wrap gap-1">
+                              {project.tecnologias && project.tecnologias.length > 0 ? (
+                                <>
+                                  {project.tecnologias.slice(0, 2).map((tech, index) => (
+                                    <span key={index} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                      {tech}
+                                    </span>
+                                  ))}
+                                  {project.tecnologias.length > 2 && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                                      +{project.tecnologias.length - 2}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-gray-400 text-xs italic">Sin tecnologías</span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Nombre del propietario/autor del proyecto */}
+                          <div className="flex items-center text-sm text-gray-500">
+                            <User className="w-4 h-4 mr-2" />
+                            <span className="font-medium text-gray-700">
+                              {project.autor || 
+                               (project.alumnos && project.alumnos.length > 0 
+                                 ? project.alumnos[0].nombre 
+                                 : project.profesor?.nombre || 'Sin propietario')}
+                            </span>
+                          </div>
+                          
+                          {/* Fecha de publicación del proyecto */}
+                          <div className="flex items-center text-sm text-gray-500">
+                            <Calendar className="w-4 h-4 mr-2" />
+                            <span>
+                              {project.fechaDefensa 
+                                ? project.fechaDefensa
+                                : new Date(project.creado_en).toLocaleDateString()}
+                            </span>
+                          </div>
+                          
+                          {project.url_repositorio && (
+                            <div className="flex items-center text-sm text-gray-500">
+                              <FaGithub className="w-4 h-4 mr-2" />
+                              <a 
+                                href={project.url_repositorio} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 truncate"
+                              >
+                                Repositorio
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                          {canEditProject(project) && (
+                            <button 
+                              onClick={() => handleEditProject(project)}
+                              className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Editar
+                            </button>
+                          )}
+                          {canDeleteProject(project) && (
+                            <button 
+                              onClick={() => handleDeleteProject(project)}
+                              className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  ))}
+                </div>
+
+                {/* Botones de Paginación */}
+                {totalPages > 1 ? (
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="flex flex-col items-center gap-4">
+                      {/* Información de paginación - siempre visible cuando hay paginación */}
+                      <div className="text-sm text-gray-600">
+                        Mostrando <span className="font-medium">{indexOfFirstProject}</span> - <span className="font-medium">{indexOfLastProject}</span> de <span className="font-medium">{totalProjects}</span> proyectos
+                      </div>
+                      
+                      {/* Navegación de páginas */}
+                      <nav className="flex items-center gap-2">
+                        {/* Botón Anterior */}
+                        <button
+                          onClick={goToPreviousPage}
+                          disabled={validCurrentPage === 1}
+                          className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            validCurrentPage === 1
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-orange-500 text-white border border-orange-600 hover:bg-orange-600 shadow-sm'
+                          }`}
+                        >
+                          <ChevronLeft className="w-4 h-4 mr-1" />
+                          Anterior
+                        </button>
+
+                        {/* Números de Página */}
+                        <div className="hidden sm:flex items-center gap-1">
+                          {getPageNumbers().length > 0 ? (
+                            getPageNumbers().map((page, index) => (
+                              <React.Fragment key={index}>
+                                {page === '...' ? (
+                                  <span className="px-3 py-2 text-gray-500">...</span>
+                                ) : (
+                                  <button
+                                    onClick={() => goToPage(page as number)}
+                                    className={`min-w-[40px] px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                      validCurrentPage === page
+                                        ? 'bg-orange-500 text-white shadow-md hover:bg-orange-600'
+                                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-orange-50'
+                                    }`}
+                                  >
+                                    {page}
+                                  </button>
+                                )}
+                              </React.Fragment>
+                            ))
+                          ) : (
+                            <span className="px-3 py-2 text-gray-500">Página {validCurrentPage}</span>
+                          )}
+                        </div>
+
+                        {/* Indicador de página en móvil */}
+                        <div className="sm:hidden px-4 py-2 bg-orange-100 rounded-lg text-sm font-medium text-orange-800">
+                          Página {validCurrentPage} de {totalPages}
+                        </div>
+
+                        {/* Botón Siguiente */}
+                        <button
+                          onClick={goToNextPage}
+                          disabled={validCurrentPage === totalPages}
+                          className={`flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            validCurrentPage === totalPages
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-orange-500 text-white border border-orange-600 hover:bg-orange-600 shadow-sm'
+                          }`}
+                        >
+                          Siguiente
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </button>
+                      </nav>
+                    </div>
                   </div>
-                ))}
-              </div>
+                ) : totalProjects > 0 ? (
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="text-center text-sm text-gray-600">
+                      Mostrando todos los <span className="font-medium">{totalProjects}</span> proyectos
+                    </div>
+                  </div>
+                ) : null}
+              </>
             )}
           </div>
         </div>
       </div>
 
-      {/* Modal de Ver Proyecto - Estilo Revisiones */}
+      {/* Resto de los modales... (sin cambios) */}
       {showViewModal && selectedProject && (
         <div 
           className={`fixed inset-0 bg-black flex items-center justify-center z-50 p-4 transition-opacity duration-300 ${
@@ -1042,12 +1295,20 @@ const Projects: React.FC = () => {
               <div className="flex space-x-3">
                 <button
                   onClick={confirmDelete}
-                  className="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+                  disabled={deleteCountdown > 0}
+                  className={`flex-1 px-4 py-2 rounded-lg transition-all font-medium ${
+                    deleteCountdown > 0
+                      ? 'bg-red-400 text-white cursor-not-allowed'
+                      : 'bg-red-500 text-white hover:bg-red-600'
+                  }`}
                 >
-                  Eliminar
+                  {deleteCountdown > 0 ? `Espera ${deleteCountdown}s...` : 'Eliminar'}
                 </button>
                 <button
-                  onClick={() => setShowDeleteModal(false)}
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteCountdown(5);
+                  }}
                   className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
                 >
                   Cancelar

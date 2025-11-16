@@ -20,6 +20,7 @@ const Admin: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deleteCountdown, setDeleteCountdown] = useState<number>(0);
   const [newRole, setNewRole] = useState<string>('');
   // Excepciones manuales discretas
   const { user: currentUser } = useAuth();
@@ -236,6 +237,7 @@ const Admin: React.FC = () => {
   // Abrir modal de eliminación
   const openDeleteModal = (user: User) => {
     setUserToDelete(user);
+    setDeleteCountdown(3); // Iniciar cuenta regresiva de 3 segundos
     setShowDeleteModal(true);
   };
 
@@ -245,8 +247,19 @@ const Admin: React.FC = () => {
     setTimeout(() => {
       setShowDeleteModal(false);
       setUserToDelete(null);
+      setDeleteCountdown(0);
     }, 500);
   };
+  
+  // Efecto para la cuenta regresiva
+  useEffect(() => {
+    if (deleteCountdown > 0 && showDeleteModal) {
+      const timer = setTimeout(() => {
+        setDeleteCountdown(deleteCountdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [deleteCountdown, showDeleteModal]);
 
   // Eliminar usuario
   const handleDeleteUser = async () => {
@@ -256,7 +269,6 @@ const Admin: React.FC = () => {
       setUsers(users.filter(u => u.id_usuario !== userToDelete.id_usuario));
       loadStats();
       closeDeleteModal();
-      alert('Usuario eliminado exitosamente');
     } catch (error: any) {
       console.error('Error al eliminar usuario:', error);
       const errorMessage = error.response?.data?.message || 'Error al eliminar usuario';
@@ -465,6 +477,7 @@ const Admin: React.FC = () => {
                 <option value="todos">Todos los roles</option>
                 <option value="alumno">Alumnos</option>
                 <option value="profesor">Profesores</option>
+                <option value="asesor">Asesores</option>
                 <option value="director">Directores</option>
               </select>
             </div>
@@ -689,9 +702,14 @@ const Admin: React.FC = () => {
               </button>
               <button
                 onClick={handleDeleteUser}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                disabled={deleteCountdown > 0}
+                className={`px-4 py-2 rounded-lg transition-all ${
+                  deleteCountdown > 0
+                    ? 'bg-red-600 text-white opacity-50 cursor-not-allowed'
+                    : 'bg-red-600 text-white hover:bg-red-700 opacity-100'
+                }`}
               >
-                Eliminar
+                {deleteCountdown > 0 ? `Espera ${deleteCountdown}s` : 'Eliminar'}
               </button>
             </div>
           </div>

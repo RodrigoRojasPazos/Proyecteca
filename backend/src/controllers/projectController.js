@@ -14,7 +14,8 @@ export const getProjects = async (req, res) => {
     console.log('User:', req.user?.correo);
     console.log('Query params:', req.query);
     
-    const { page = 1, limit = 10, estatus, search } = req.query;
+    // Aceptar tanto 'filter' (del frontend) como 'estatus' (legacy)
+    const { page = 1, limit = 10, estatus, filter, search, technologies, databases } = req.query;
     const offset = (page - 1) * limit;
 
     const where = {};
@@ -24,9 +25,11 @@ export const getProjects = async (req, res) => {
       console.log('Filtering for student role');
     }
 
-    if (estatus) {
-      where.estatus = estatus;
-      console.log('Filtering by estatus:', estatus);
+    // Usar filter o estatus, filter tiene prioridad
+    const filterValue = filter || estatus;
+    if (filterValue) {
+      where.estatus = filterValue;
+      console.log('Filtering by estatus:', filterValue);
     }
 
     if (search) {
@@ -38,7 +41,99 @@ export const getProjects = async (req, res) => {
       console.log('Filtering by search:', search);
     }
 
+    // Array para condiciones adicionales que deben cumplirse (AND)
+    const additionalConditions = [];
+
+    // Filtrar por tecnologías
+    if (technologies) {
+      let techArray = [];
+      // Si viene como string, puede ser un array JSON o un string simple
+      if (typeof technologies === 'string') {
+        try {
+          techArray = JSON.parse(technologies);
+        } catch {
+          // Si no es JSON, tratarlo como un array con un solo elemento
+          techArray = [technologies];
+        }
+      } else if (Array.isArray(technologies)) {
+        techArray = technologies;
+      }
+
+      if (techArray.length > 0) {
+        // Filtrar proyectos que contengan TODAS las tecnologías especificadas
+        // Los datos están almacenados como string JSON (ej: ["React","Node.js"])
+        // Búsqueda parcial: "express" encontrará "Express.js", "express.js", etc.
+        const techConditions = techArray.map(tech => {
+          // Escapar caracteres especiales para LIKE
+          const escapedTech = tech.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+          // Buscar coincidencia parcial en el string JSON (case-insensitive)
+          // Busca el texto dentro de cualquier valor del array JSON
+          return sequelize.literal(
+            `LOWER(tecnologias) LIKE LOWER('%${escapedTech}%')`
+          );
+        });
+        additionalConditions.push(...techConditions);
+        console.log('Filtering by technologies:', techArray);
+      }
+    }
+
+    // Filtrar por bases de datos
+    if (databases) {
+      let dbArray = [];
+      // Si viene como string, puede ser un array JSON o un string simple
+      if (typeof databases === 'string') {
+        try {
+          dbArray = JSON.parse(databases);
+        } catch {
+          // Si no es JSON, tratarlo como un array con un solo elemento
+          dbArray = [databases];
+        }
+      } else if (Array.isArray(databases)) {
+        dbArray = databases;
+      }
+
+      if (dbArray.length > 0) {
+        // Filtrar proyectos que contengan TODAS las bases de datos especificadas
+        // Los datos están almacenados como string JSON (ej: ["MySQL"])
+        // Búsqueda parcial: "mysql" encontrará "MySQL", "mysql", etc.
+        const dbConditions = dbArray.map(db => {
+          // Escapar caracteres especiales para LIKE
+          const escapedDb = db.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+          // Buscar coincidencia parcial en el string JSON (case-insensitive)
+          // Busca el texto dentro de cualquier valor del array JSON
+          return sequelize.literal(
+            `LOWER(base_datos) LIKE LOWER('%${escapedDb}%')`
+          );
+        });
+        additionalConditions.push(...dbConditions);
+        console.log('Filtering by databases:', dbArray);
+      }
+    }
+
+    // Agregar todas las condiciones adicionales al where
+    if (additionalConditions.length > 0) {
+      where[Op.and] = where[Op.and] || [];
+      where[Op.and].push(...additionalConditions);
+    }
+
     console.log('Where clause:', where);
+
+    // Debug: Verificar algunos proyectos sin filtros para ver el formato de los datos
+    if (technologies || databases) {
+      const sampleProject = await Project.findOne({
+        where: {},
+        limit: 1
+      });
+      if (sampleProject) {
+        const sampleData = sampleProject.toJSON();
+        console.log('=== SAMPLE PROJECT FOR DEBUG ===');
+        console.log('Tecnologias type:', typeof sampleData.tecnologias);
+        console.log('Tecnologias value:', sampleData.tecnologias);
+        console.log('Base_datos type:', typeof sampleData.base_datos);
+        console.log('Base_datos value:', sampleData.base_datos);
+        console.log('================================');
+      }
+    }
 
     // Agregando todas las relaciones principales
     console.log('Fetching projects with all main relations...');
