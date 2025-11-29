@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon src/server.js",
+    "dev": "nodemon --no-deprecation src/cluster.js",
     "start": "node --no-deprecation src/cluster.js",
     "start:single": "node --no-deprecation src/server.js",
     "start:cluster": "node --no-deprecation src/cluster.js",

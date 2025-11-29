@@ -41,6 +41,14 @@ if (cluster.isPrimary) {
         restarts: (workerStats[worker.id]?.restarts || 0) + 1
       };
       console.log(` Spawning new worker ${newWorker.process.pid} to replace ${worker.process.pid}`);
+      
+      // Mostrar estadísticas solo cuando hay un reinicio
+      const stats = Object.values(workerStats).map(w => ({
+        pid: w.pid,
+        uptime: Math.floor((Date.now() - w.startTime) / 1000),
+        restarts: w.restarts
+      }));
+      console.log(' Worker stats:', JSON.stringify(stats, null, 2));
     }
     
     delete workerStats[worker.id];
@@ -60,16 +68,6 @@ if (cluster.isPrimary) {
       process.exit(0);
     }, 30000); // 30 segundos para terminar
   });
-
-  // Endpoint de stats (simplificado)
-  setInterval(() => {
-    const stats = Object.values(workerStats).map(w => ({
-      pid: w.pid,
-      uptime: Math.floor((Date.now() - w.startTime) / 1000),
-      restarts: w.restarts
-    }));
-    console.log(' Worker stats:', JSON.stringify(stats, null, 2));
-  }, 60000); // Cada minuto
 
 } else {
   // Workers importan y ejecutan el servidor
