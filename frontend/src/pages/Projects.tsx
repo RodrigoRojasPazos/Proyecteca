@@ -184,7 +184,7 @@ const Projects: React.FC = () => {
         
         // Cargar proyectos desde la API con paginación del servidor
         const response = await projectsAPI.getAll(params);
-        console.log('Respuesta de la API:', response);
+        // API response received
         
         // La API devuelve un objeto con projects/data y pagination
         let projectsData = [];
@@ -208,7 +208,7 @@ const Projects: React.FC = () => {
           setTotalProjects(projectsData.length);
         }
         
-        console.log(`${projectsData.length} proyectos cargados (página ${currentPage} de ${response.pagination?.totalPages || 1})`);
+        // Projects loaded successfully
         
         // Cargar previsualizaciones de PDFs para proyectos que tienen archivo
         const previews: { [key: number]: string } = {};
@@ -338,6 +338,18 @@ const Projects: React.FC = () => {
     }
   }, [showDeleteModal, deleteCountdown]);
 
+  // Bloquear scroll cuando se abre el modal de eliminar
+  useEffect(() => {
+    if (showDeleteModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showDeleteModal]);
+
   const reloadProjects = async () => {
     try {
       setLoading(true);
@@ -392,7 +404,7 @@ const Projects: React.FC = () => {
         setTotalProjects(projectsData.length);
       }
       
-      console.log(`${projectsData.length} proyectos recargados (página ${currentPage} de ${response.pagination?.totalPages || 1})`);
+      // Projects reloaded successfully
     } catch (error) {
       console.error('Error al recargar proyectos:', error);
     } finally {

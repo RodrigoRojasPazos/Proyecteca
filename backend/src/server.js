@@ -1,5 +1,11 @@
-// Suprimir warnings de deprecación específicos
-process.noDeprecation = true;
+// Suprimir warnings de deprecación específicos (compatible con cluster)
+if (!process.noDeprecation) {
+  try {
+    process.noDeprecation = true;
+  } catch (e) {
+    // En modo cluster puede ser read-only, ignorar
+  }
+}
 
 import express from 'express';
 import cors from 'cors';
@@ -83,10 +89,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Middleware adicional para debugging CORS
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl} - Origin: ${req.headers.origin || 'No Origin'}`);
-  next();
-});
+//app.use((req, res, next) => {
+ // console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl} - Origin: ${req.headers.origin || 'No Origin'}`);
+ // next();
+//});
 
 // Configuración menos restrictiva de Helmet para desarrollo
 app.use(helmet({
@@ -441,29 +447,29 @@ const startServer = async () => {
   // Intentar conectar a la base de datos
   try {
     await sequelize.authenticate();
-    console.log('✅ Database connection established successfully.');
+    console.log(' Database connection established successfully.');
     
     // Sync database (only in development)
     if (process.env.NODE_ENV === 'development') {
       await sequelize.sync({ alter: false }); // No alterar tablas existentes
-      console.log('✅ Database synced successfully.');
+      console.log(' Database synced successfully.');
       
       // Inicialización de datos COMPLETAMENTE DESHABILITADA
-      console.log('📊 Inicialización de datos DESHABILITADA - No se crearán más proyectos de ejemplo');
+     // console.log(' Inicialización de datos DESHABILITADA - No se crearán más proyectos de ejemplo');
     }
     dbConnected = true;
   } catch (error) {
-    console.warn('⚠️ Database connection failed:', error.message);
-    console.warn('⚠️ Server will run without database functionality');
+    console.warn(' Database connection failed:', error.message);
+    console.warn(' Server will run without database functionality');
     dbConnected = false;
   }
 
   // Iniciar servidor independientemente de la base de datos
   app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📖 Environment: ${process.env.NODE_ENV}`);
-    console.log(`💾 Database: ${dbConnected ? 'Connected' : 'Disconnected'}`);
-    console.log(`🌐 API Health Check: http://localhost:${PORT}/api/health`);
+    console.log(` Server running on port ${PORT}`);
+    console.log(` Environment: ${process.env.NODE_ENV}`);
+    console.log(` Database: ${dbConnected ? 'Connected' : 'Disconnected'}`);
+    console.log(` API Health Check: http://localhost:${PORT}/api/health`);
   });
 };
 

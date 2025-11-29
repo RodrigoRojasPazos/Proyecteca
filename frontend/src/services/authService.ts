@@ -44,10 +44,7 @@ export const authService = {
   // Login con Google OAuth
   async googleLogin(credential: string) {
     try {
-      console.log('Iniciando solicitud de login con Google');
-      
       const response = await authAPI.post('/auth/google', { credential });
-      console.log('Login exitoso');
       
       return response.data;
     } catch (error) {
@@ -61,15 +58,12 @@ export const authService = {
   // Verificar token JWT
   async verifyToken(token: string): Promise<User> {
     try {
-      console.log('Verificando token...');
-      
       const response = await authAPI.get('/auth/verify', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      console.log('Token verificado correctamente');
       return response.data;
     } catch (error) {
       console.error('Token verification error:', error);

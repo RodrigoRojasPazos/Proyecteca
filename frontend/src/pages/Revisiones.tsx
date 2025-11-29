@@ -203,7 +203,7 @@ const Revisiones: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      console.log('Loading projects from API...');
+      // Loading projects...
       
       // Primero, cargar TODOS los proyectos sin límite para el conteo global
       const allProjectsResponse = await projectsAPI.getAll({ limit: 999999 }); // Sin límite real
@@ -270,12 +270,7 @@ const Revisiones: React.FC = () => {
       setTotalPages(Math.ceil(totalFilteredProjects / projectsPerPage));
       setTotalProjects(totalFilteredProjects);
       
-      console.log('Projects loaded:', {
-        total: allFilteredProjects.length,
-        filtered: totalFilteredProjects,
-        currentPage: currentPage,
-        showing: paginatedProjects.length
-      });
+      // Projects loaded successfully
       
       if (paginatedProjects.length === 0) {
         if (user?.rol === 'profesor') {
@@ -333,7 +328,7 @@ const Revisiones: React.FC = () => {
 
   const actualizarEstadoProyecto = async (projectId: number, nuevoEstado: 'pendiente' | 'en-revision' | 'aceptado' | 'rechazado', motivoRechazo?: string) => {
     try {
-      console.log(`Updating project ${projectId} to status: ${nuevoEstado}`);
+      // Updating project status...
       
       // Preparar datos para actualizar
       const updateData: any = { 
@@ -351,7 +346,7 @@ const Revisiones: React.FC = () => {
       // Actualizar en la API
       await projectsAPI.update(projectId, updateData);
       
-      console.log('Project status updated successfully - Estado actualizado a:', nuevoEstado);
+      // Project status updated successfully
       
       // Recargar proyectos desde el servidor para mantener consistencia
       await reloadProjects();

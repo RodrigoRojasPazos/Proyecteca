@@ -74,7 +74,7 @@ const Admin: React.FC = () => {
       const response = await usersAPI.getAll(params);
       
       if (response && response.users) {
-        console.log('Usuarios cargados:', response.users); // Para debug
+        // Usuarios cargados correctamente
         setUsers(response.users);
       } else {
         setUsers([]);

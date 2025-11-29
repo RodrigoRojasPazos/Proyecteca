@@ -6,7 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node --no-deprecation src/server.js",
+    "start": "node --no-deprecation src/cluster.js",
+    "start:single": "node --no-deprecation src/server.js",
+    "start:cluster": "node --no-deprecation src/cluster.js",
+    "start:pm2": "pm2 start ecosystem.config.cjs",
     "migrate": "node src/migrations/migrate.js",
     "seed": "node src/seeders/seed.js"
   },
@@ -20,9 +23,11 @@
     "express-rate-limit": "^6.10.0",
     "google-auth-library": "^9.0.0",
     "helmet": "^7.0.0",
+    "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.6.0",
+    "rate-limit-redis": "^4.3.0",
     "sequelize": "^6.32.1"
   },
   "devDependencies": {

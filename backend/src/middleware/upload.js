@@ -40,7 +40,7 @@ const storage = multer.diskStorage({
       // Crear directorio si no existe
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
-        console.log(`Created directory: ${uploadDir}`);
+        //console.log(`Created directory: ${uploadDir}`);
       }
       
       cb(null, uploadDir);
@@ -66,7 +66,7 @@ const storage = multer.diskStorage({
         .substring(0, 30);
       
       const filename = `${cleanTitle}-${timestamp}-${nameWithoutExt}${ext}`;
-      console.log(`Saving file as: ${filename}`);
+      //console.log(`Saving file as: ${filename}`);
       
       cb(null, filename);
     } catch (error) {
@@ -86,10 +86,10 @@ const fileFilter = (req, file, cb) => {
   const mimetype = allowedMimeType.test(file.mimetype);
 
   if (mimetype && extname) {
-    console.log(`✅ PDF file accepted: ${file.originalname}`);
+    //console.log(` PDF file accepted: ${file.originalname}`);
     return cb(null, true);
   } else {
-    console.log(`❌ File rejected: ${file.originalname} (${file.mimetype})`);
+    //console.log(` File rejected: ${file.originalname} (${file.mimetype})`);
     cb(new Error('Solo se permiten archivos PDF (.pdf)'));
   }
 };

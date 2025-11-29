@@ -30,11 +30,9 @@ export const useGoogleOAuth = ({ clientId, onSuccess, onError }: UseGoogleOAuthP
   const initializeGoogleOAuth = useCallback(() => {
     if (window.google && clientId) {
       try {
-        console.log('Inicializando Google OAuth');
         window.google.accounts.id.initialize({
           client_id: clientId,
           callback: (response: GoogleUser) => {
-            console.log('Google OAuth callback recibido');
             onSuccess(response.credential);
           },
           auto_select: false,
@@ -43,13 +41,10 @@ export const useGoogleOAuth = ({ clientId, onSuccess, onError }: UseGoogleOAuthP
           use_fedcm_for_prompt: false,
           itp_support: true
         });
-        console.log('Google OAuth inicializado correctamente');
       } catch (error) {
         console.error('Error al inicializar Google OAuth:', error);
         onError(error);
       }
-    } else {
-      console.warn('Cliente Google OAuth no disponible');
     }
   }, [clientId, onSuccess, onError]);
 

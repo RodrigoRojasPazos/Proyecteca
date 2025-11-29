@@ -2,7 +2,7 @@ import { Project } from '../models/index.js';
 
 export const getProjectsSimple = async (req, res) => {
   try {
-    console.log('=== SIMPLE GET PROJECTS ===');
+    //console.log('=== SIMPLE GET PROJECTS ===');
     
     // Consulta muy básica sin includes
     const projects = await Project.findAll({
@@ -10,7 +10,7 @@ export const getProjectsSimple = async (req, res) => {
       order: [['creado_en', 'DESC']]
     });
 
-    console.log(`Found ${projects.length} projects`);
+   // console.log(`Found ${projects.length} projects`);
     
     // Mapear a formato simple
     const projectsData = projects.map(project => {

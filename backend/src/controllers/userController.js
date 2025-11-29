@@ -36,7 +36,7 @@ export const getUsers = async (req, res) => {
       order: [['creado_en', 'DESC']]
     });
 
-    console.log(`Found ${users.count} users in database`);
+    //console.log(`Found ${users.count} users in database`);
 
     res.json({
       success: true,

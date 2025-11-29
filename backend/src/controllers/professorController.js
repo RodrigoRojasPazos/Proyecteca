@@ -214,7 +214,7 @@ export const updateProfessor = async (req, res) => {
 export const toggleProfessorStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`Toggling status for professor ID: ${id}`);
+    //console.log(`Toggling status for professor ID: ${id}`);
 
     const professor = await User.findOne({
       where: { 
@@ -226,7 +226,7 @@ export const toggleProfessorStatus = async (req, res) => {
     });
 
     if (!professor) {
-      console.log(`Professor with ID ${id} not found`);
+      //console.log(`Professor with ID ${id} not found`);
       return res.status(404).json({
         success: false,
         message: 'Profesor no encontrado'
@@ -235,7 +235,7 @@ export const toggleProfessorStatus = async (req, res) => {
 
     const oldStatus = professor.isActive;
     const newStatus = !professor.isActive;
-    console.log(`Changing professor ${professor.nombre} status from ${oldStatus} to ${newStatus}`);
+   // console.log(`Changing professor ${professor.nombre} status from ${oldStatus} to ${newStatus}`);
     
     await professor.update({
       isActive: newStatus
@@ -243,11 +243,11 @@ export const toggleProfessorStatus = async (req, res) => {
 
     // Refrescar el objeto para obtener los datos actualizados
     await professor.reload();
-    console.log(`Professor ${professor.nombre} status updated to: ${professor.isActive}`);
+   // console.log(`Professor ${professor.nombre} status updated to: ${professor.isActive}`);
 
     // Verificar directamente en la base de datos
     const verification = await User.findByPk(professor.id_usuario);
-    console.log(`Database verification - Professor ${verification.nombre} isActive: ${verification.isActive}`);
+   // console.log(`Database verification - Professor ${verification.nombre} isActive: ${verification.isActive}`);
 
     res.json({
       success: true,
@@ -259,7 +259,7 @@ export const toggleProfessorStatus = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error toggling professor status:', error);
+    //console.error('Error toggling professor status:', error);
     res.status(500).json({
       success: false,
       message: 'Error al cambiar estado del profesor',

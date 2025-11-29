@@ -29,15 +29,6 @@ const GoogleOAuthButton: React.FC<GoogleOAuthButtonProps> = ({
     }
   }, [isGoogleLoaded, renderGoogleButton, clientId]);
 
-  // Debug info para desarrollo
-  useEffect(() => {
-    if (clientId) {
-      console.log(' Google OAuth configurado con Client ID:', clientId.substring(0, 12) + '...');
-    } else {
-      console.log(' Google OAuth no configurado. Por favor, configure VITE_GOOGLE_CLIENT_ID en el archivo .env');
-    }
-  }, [clientId]);
-
   // Si Google no está disponible o no hay client ID, mostrar error
   if (!isGoogleLoaded || !clientId) {
     return (

@@ -47,7 +47,7 @@ const validateInstitutionalEmail = async (email, role = 'alumno') => {
 
 export const googleLogin = async (req, res) => {
   try {
-    console.log('Solicitud de login con Google recibida');
+    //console.log('Solicitud de login con Google recibida');
     const { credential } = req.body;
     
     if (!credential) {
@@ -142,7 +142,7 @@ export const googleLogin = async (req, res) => {
 
 export const verifyToken = async (req, res) => {
   try {
-    console.log('Verificación de token solicitada');
+    //console.log('Verificación de token solicitada');
     
     const user = req.user;
     
@@ -153,7 +153,7 @@ export const verifyToken = async (req, res) => {
       });
     }
     
-    console.log('Token verificado para usuario:', user.correo);
+   // console.log('Token verificado para usuario:', user.correo);
     
     return res.json({
       id_usuario: user.id_usuario,
@@ -163,7 +163,7 @@ export const verifyToken = async (req, res) => {
       avatar: user.avatar
     });
   } catch (error) {
-    console.error('Error en verificación de token:', error);
+    //console.error('Error en verificación de token:', error);
     return res.status(401).json({ 
       message: 'Token inválido',
       error: error.message 

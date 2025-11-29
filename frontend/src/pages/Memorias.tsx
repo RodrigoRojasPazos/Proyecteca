@@ -226,6 +226,18 @@ const Memorias: React.FC = () => {
     }
   };
 
+  // Bloquear scroll cuando se abre el modal de eliminar
+  useEffect(() => {
+    if (showDeleteModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showDeleteModal]);
+
   // Cargar proyectos del usuario
   useEffect(() => {
     const fetchUserProjects = async () => {

@@ -10,9 +10,9 @@ const __dirname = path.dirname(__filename);
 
 export const getProjects = async (req, res) => {
   try {
-    console.log('=== GET PROJECTS REQUEST ===');
-    console.log('User:', req.user?.correo);
-    console.log('Query params:', req.query);
+    //console.log('=== GET PROJECTS REQUEST ===');
+    //console.log('User:', req.user?.correo);
+    //console.log('Query params:', req.query);
     
     // Aceptar tanto 'filter' (del frontend) como 'estatus' (legacy)
     const { page = 1, limit = 10, estatus, filter, search, technologies, databases } = req.query;
@@ -22,14 +22,14 @@ export const getProjects = async (req, res) => {
     
     // Filtrar por rol de usuario
     if (req.user.rol === 'estudiante') {
-      console.log('Filtering for student role');
+      //console.log('Filtering for student role');
     }
 
     // Usar filter o estatus, filter tiene prioridad
     const filterValue = filter || estatus;
     if (filterValue) {
       where.estatus = filterValue;
-      console.log('Filtering by estatus:', filterValue);
+      //console.log('Filtering by estatus:', filterValue);
     }
 
     if (search) {
@@ -38,7 +38,7 @@ export const getProjects = async (req, res) => {
         { descripcion: { [Op.like]: `%${search}%` } },
         { asignatura: { [Op.like]: `%${search}%` } }
       ];
-      console.log('Filtering by search:', search);
+      //console.log('Filtering by search:', search);
     }
 
     // Array para condiciones adicionales que deben cumplirse (AND)
@@ -73,7 +73,7 @@ export const getProjects = async (req, res) => {
           );
         });
         additionalConditions.push(...techConditions);
-        console.log('Filtering by technologies:', techArray);
+        //console.log('Filtering by technologies:', techArray);
       }
     }
 
@@ -116,7 +116,7 @@ export const getProjects = async (req, res) => {
       where[Op.and].push(...additionalConditions);
     }
 
-    console.log('Where clause:', where);
+    //console.log('Where clause:', where);
 
     // Debug: Verificar algunos proyectos sin filtros para ver el formato de los datos
     if (technologies || databases) {
@@ -126,17 +126,17 @@ export const getProjects = async (req, res) => {
       });
       if (sampleProject) {
         const sampleData = sampleProject.toJSON();
-        console.log('=== SAMPLE PROJECT FOR DEBUG ===');
-        console.log('Tecnologias type:', typeof sampleData.tecnologias);
-        console.log('Tecnologias value:', sampleData.tecnologias);
-        console.log('Base_datos type:', typeof sampleData.base_datos);
-        console.log('Base_datos value:', sampleData.base_datos);
-        console.log('================================');
+        //console.log('=== SAMPLE PROJECT FOR DEBUG ===');
+        //console.log('Tecnologias type:', typeof sampleData.tecnologias);
+        //console.log('Tecnologias value:', sampleData.tecnologias);
+        //console.log('Base_datos type:', typeof sampleData.base_datos);
+        //console.log('Base_datos value:', sampleData.base_datos);
+        //console.log('================================');
       }
     }
 
     // Agregando todas las relaciones principales
-    console.log('Fetching projects with all main relations...');
+    //console.log('Fetching projects with all main relations...');
     
     const projects = await Project.findAndCountAll({
       where,
@@ -166,24 +166,24 @@ export const getProjects = async (req, res) => {
       order: [['creado_en', 'DESC']]
     });
 
-    console.log(`Found ${projects.count} projects in database`);
+   // console.log(`Found ${projects.count} projects in database`);
     
     // Debug: mostrar información del primer proyecto
-    if (projects.rows.length > 0) {
-      const firstProject = projects.rows[0].toJSON();
-      console.log('=== SAMPLE PROJECT DATA FROM DB ===');
-      console.log('ID:', firstProject.id_proyecto);
-      console.log('Título:', firstProject.titulo);
-      console.log('PROGRAMA:', firstProject.programa);
-      console.log('Autor:', firstProject.autor);
-      console.log('Asesor:', firstProject.asesor);
-      console.log('Asignatura:', firstProject.asignatura);
-      console.log('Estado:', firstProject.estado);
-      console.log('Tecnologias raw:', firstProject.tecnologias);
-      console.log('Base_datos raw:', firstProject.base_datos);
-      console.log('Alumnos_data:', firstProject.alumnos_data);
-      console.log('=====================================');
-    }
+    //if (projects.rows.length > 0) {
+     // const firstProject = projects.rows[0].toJSON();
+      //console.log('=== SAMPLE PROJECT DATA FROM DB ===');
+      //console.log('ID:', firstProject.id_proyecto);
+      //console.log('Título:', firstProject.titulo);
+      //console.log('PROGRAMA:', firstProject.programa);
+      //console.log('Autor:', firstProject.autor);
+      //console.log('Asesor:', firstProject.asesor);
+      //console.log('Asignatura:', firstProject.asignatura);
+      //console.log('Estado:', firstProject.estado);
+      //console.log('Tecnologias raw:', firstProject.tecnologias);
+      //console.log('Base_datos raw:', firstProject.base_datos);
+      //console.log('Alumnos_data:', firstProject.alumnos_data);
+      //console.log('=====================================');
+  //  }
     
     // Mapear estatus del backend al estado del frontend (versión simple)
     const projectsWithEstado = projects.rows.map(project => {
@@ -260,7 +260,7 @@ export const getProjects = async (req, res) => {
       };
     });
 
-    console.log('Projects with estado mapping:', JSON.stringify(projectsWithEstado, null, 2));
+    //console.log('Projects with estado mapping:', JSON.stringify(projectsWithEstado, null, 2));
 
     res.json({
       success: true,
@@ -294,12 +294,12 @@ export const getProjects = async (req, res) => {
 
 export const createProject = async (req, res) => {
   try {
-    console.log('===== CREATE PROJECT REQUEST =====');
-    console.log('User:', req.user);
-    console.log('Request body:', req.body);
-    console.log('PROGRAMA RECIBIDO EN BACKEND:', req.body.programa);
-    console.log('Archivo subido:', req.file);
-    console.log('==========================================');
+    //console.log('===== CREATE PROJECT REQUEST =====');
+    //console.log('User:', req.user);
+    //console.log('Request body:', req.body);
+    //console.log('PROGRAMA RECIBIDO EN BACKEND:', req.body.programa);
+    //console.log('Archivo subido:', req.file);
+    //console.log('==========================================');
     
     const { 
       titulo, 
@@ -338,7 +338,7 @@ export const createProject = async (req, res) => {
         tecnologiasParsed = tecnologias;
       }
     } catch (e) {
-      console.log('Error parsing tecnologias:', e);
+      //console.log('Error parsing tecnologias:', e);
       tecnologiasParsed = [];
     }
 
@@ -356,7 +356,7 @@ export const createProject = async (req, res) => {
         baseDatosParsed = baseDatos;
       }
     } catch (e) {
-      console.log('Error parsing baseDatos:', e);
+      //console.log('Error parsing baseDatos:', e);
       baseDatosParsed = [];
     }
 
@@ -365,14 +365,14 @@ export const createProject = async (req, res) => {
         alumnosParsed = JSON.parse(alumnos);
       }
     } catch (e) {
-      console.log('Error parsing alumnos:', e);
+      //console.log('Error parsing alumnos:', e);
       alumnosParsed = null;
     }
 
-    console.log('Processed data:');
-    console.log('- tecnologiasParsed:', tecnologiasParsed);
-    console.log('- baseDatosParsed:', baseDatosParsed);
-    console.log('- alumnosParsed:', alumnosParsed);
+    //console.log('Processed data:');
+    //console.log('- tecnologiasParsed:', tecnologiasParsed);
+    //console.log('- baseDatosParsed:', baseDatosParsed);
+    //console.log('- alumnosParsed:', alumnosParsed);
 
     // Validar campos requeridos
     if (!titulo) {
@@ -533,7 +533,7 @@ export const updateProject = async (req, res) => {
         tecnologiasParsed = tecnologias;
       }
     } catch (e) {
-      console.log('Error parsing tecnologias:', e);
+      //console.log('Error parsing tecnologias:', e);
     }
 
     // Procesar baseDatos
@@ -548,7 +548,7 @@ export const updateProject = async (req, res) => {
         baseDatosParsed = baseDatos;
       }
     } catch (e) {
-      console.log('Error parsing baseDatos:', e);
+      //console.log('Error parsing baseDatos:', e);
     }
 
     // Procesar alumnos
@@ -557,7 +557,7 @@ export const updateProject = async (req, res) => {
         alumnosParsed = JSON.parse(alumnos);
       }
     } catch (e) {
-      console.log('Error parsing alumnos:', e);
+      //console.log('Error parsing alumnos:', e);
     }
 
     // Mapear estados del frontend al backend
@@ -829,9 +829,9 @@ export const deleteProject = async (req, res) => {
   
   try {
     const { id } = req.params;
-    console.log(`=== DELETE PROJECT ${id} ===`);
-    console.log('Usuario que intenta eliminar:', req.user.correo, 'Rol:', req.user.rol);
-    console.log('Objeto user completo:', req.user);
+    //console.log(`=== DELETE PROJECT ${id} ===`);
+    //console.log('Usuario que intenta eliminar:', req.user.correo, 'Rol:', req.user.rol);
+    //console.log('Objeto user completo:', req.user);
 
     const project = await Project.findByPk(id);
 
@@ -841,33 +841,33 @@ export const deleteProject = async (req, res) => {
       return res.status(404).json({ message: 'Project not found' });
     }
 
-    console.log('✅ Proyecto encontrado:', project.titulo, 'ID:', project.id_proyecto);
+    //console.log('✅ Proyecto encontrado:', project.titulo, 'ID:', project.id_proyecto);
 
     // Verificar permisos más flexibles
     // Permitir eliminación si:
     // 1. Es director o admin
     // 2. Es el profesor asesor asignado al proyecto
     // 3. Es el autor del proyecto (verificar en la tabla proyectos_alumnos)
-    console.log('Verificando permisos...');
+    //console.log('Verificando permisos...');
     
     const userRole = req.user.rol;
     const userEmail = req.user.correo;
     const userId = req.user.id_usuario;
     
     if (!['director', 'admin'].includes(userRole)) {
-      console.log('Usuario no es director/admin, verificando otros permisos...');
+      //console.log('Usuario no es director/admin, verificando otros permisos...');
       
       let hasPermission = false;
       
       // Verificar si es profesor asesor del proyecto
       if (userRole === 'profesor' && project.profesor_id === userId) {
-        console.log('✅ Usuario es el profesor asesor del proyecto');
+        //console.log('✅ Usuario es el profesor asesor del proyecto');
         hasPermission = true;
       }
       
       // Verificar si el usuario es autor del proyecto
       if (!hasPermission) {
-        console.log('Parámetros de consulta - ID proyecto:', id, 'Email usuario:', userEmail);
+        //console.log('Parámetros de consulta - ID proyecto:', id, 'Email usuario:', userEmail);
         
         const isAuthor = await sequelize.query(
           'SELECT COUNT(*) as count FROM proyectos_alumnos pa JOIN usuarios u ON pa.id_alumno = u.id_usuario WHERE pa.id_proyecto = :projectId AND u.correo = :userEmail',
@@ -878,25 +878,25 @@ export const deleteProject = async (req, res) => {
           }
         );
         
-        console.log('Resultado verificación de autoría:', isAuthor);
+        //console.log('Resultado verificación de autoría:', isAuthor);
         
         if (isAuthor[0] && isAuthor[0].count > 0) {
-          console.log('✅ Usuario verificado como autor del proyecto');
+          //console.log('✅ Usuario verificado como autor del proyecto');
           hasPermission = true;
         }
       }
       
       if (!hasPermission) {
-        console.log('❌ Usuario no tiene permisos para eliminar este proyecto');
+        //console.log(' Usuario no tiene permisos para eliminar este proyecto');
         await transaction.rollback();
         return res.status(403).json({ message: 'No tienes permisos para eliminar este proyecto' });
       }
     } else {
-      console.log('✅ Usuario es director/admin, permitiendo eliminación');
+      //console.log(' Usuario es director/admin, permitiendo eliminación');
     }
 
     // Eliminar registros relacionados primero para evitar restricciones de clave foránea
-    console.log('🗑️ Eliminando relaciones en proyectos_alumnos...');
+    //console.log(' Eliminando relaciones en proyectos_alumnos...');
     
     // 1. Eliminar relaciones en proyectos_alumnos si existe
     const deletedRelations = await sequelize.query(
@@ -907,26 +907,26 @@ export const deleteProject = async (req, res) => {
       }
     );
 
-    console.log('🗑️ Relaciones eliminadas:', deletedRelations);
+    //console.log(' Relaciones eliminadas:', deletedRelations);
 
     // 2. Eliminar otras relaciones si existen (comentarios, revisiones, etc.)
     // Puedes agregar más eliminaciones aquí si hay otras tablas relacionadas
     
     // 3. Finalmente eliminar el proyecto
-    console.log('🗑️ Eliminando proyecto de la tabla proyectos...');
+    //console.log(' Eliminando proyecto de la tabla proyectos...');
     const deletedProject = await project.destroy({ transaction });
-    console.log('✅ Proyecto eliminado:', deletedProject);
+    //console.log(' Proyecto eliminado:', deletedProject);
 
     await transaction.commit();
-    console.log('✅ Transacción commitada exitosamente');
+   //console.log(' Transacción commitada exitosamente');
     res.json({ message: 'Project deleted successfully' });
     
   } catch (error) {
     await transaction.rollback();
-    console.error('❌ Delete project error:', error);
-    console.error('❌ Error name:', error.name);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Stack trace:', error.stack);
+    console.error(' Delete project error:', error);
+    console.error(' Error name:', error.name);
+    console.error(' Error message:', error.message);
+    console.error(' Stack trace:', error.stack);
     
     // Mensaje más específico si es error de clave foránea
     if (error.name === 'SequelizeForeignKeyConstraintError') {
@@ -992,7 +992,7 @@ export const getProjectFile = async (req, res) => {
           userEmail = alumnosData[0].email || alumnosData[0].correo || userEmail;
         }
       } catch (e) {
-        console.log('Error parsing alumnos_data:', e);
+       console.log('Error parsing alumnos_data:', e);
       }
     }
     
@@ -1004,7 +1004,7 @@ export const getProjectFile = async (req, res) => {
     const matricula = extraerMatriculaDeEmail(userEmail);
     const filePath = path.join(__dirname, '../../uploads', matricula, project.archivo);
     
-    console.log('Trying to serve file:', filePath);
+    //console.log('Trying to serve file:', filePath);
     
     // Verificar si el archivo existe
     if (!fs.existsSync(filePath)) {
